@@ -2,7 +2,7 @@ import { Configuration, ScopedConfiguration, RootConfiguration } from '@sarina/c
 import theoretically from 'jest-theories';
 
 describe('sarina/configuration', () => {
-	describe('configuration-builder', () => {
+	describe('implementation', () => {
 		describe('Configuration', () => {
 			describe('has()', () => {
 				it('should_use_getFullPath_to_get_finalPath', () => {

@@ -1,7 +1,7 @@
 import { ConfigurationBuilder, ConfigurationElement, RootConfiguration } from '@sarina/configuration';
 
 describe('sarina/configuration', () => {
-	describe('configuration-builder', () => {
+	describe('implementation', () => {
 		describe('ConfigurationBuilder', () => {
 			describe('add', () => {
 				it('should_add_source_into_sources', () => {
