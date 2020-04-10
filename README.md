@@ -1,10 +1,10 @@
-Sarina-DI
+Sarina-Configuration
 =========
 
-![build-and-test](https://github.com/SarinaJs/sarina-di/workflows/build-and-test/badge.svg)
-[![npm version](https://badge.fury.io/js/%40sarina%2Fdi.svg)](https://badge.fury.io/js/%40sarina%2Fdi)
+![build-and-test](https://github.com/SarinaJs/sarina-configuration/workflows/build-and-test/badge.svg)
+[![npm version](https://badge.fury.io/js/%40sarina%2Fconfiguration.svg)](https://badge.fury.io/js/%40sarina%2Fconfiguration)
 
-A dependency injection for Typescript.
+Key/Value pair configuration library
 
 > The package is part of `@Sarina` framework
 
@@ -13,273 +13,125 @@ A dependency injection for Typescript.
 Install by `yarn`
 
 ```sh
-yarn add @sarina/di
-```
-
-Modify your `tsconfig.json` to include the following settings
-```json
-{
-  "compilerOptions": {
-    "experimentalDecorators": true,
-    "emitDecoratorMetadata": true
-  }
-}
+yarn add @sarina/configuration
 ```
 
 ## Quick Start
 
 ```ts
-
-import { ServiceCollection, IServiceProvider, injectable } from '@sarina/di';
-
-@injectable()
-class MyService {
-	public constructor(private readonly myService: MySeccondService) {}
-
-	public getName() {
-		return this.myService.name;
-	}
-}
-@injectable()
-class MySeccondService {
-	public name: string;
-}
+import { ConfigurationBuilder, MemoryConfigurationSource, EnvironmentConfigurationSource } from '@sarina/configuration';
 
 const bootstrap = async () => {
-	// registring services
-	const serviceContainer = new ServiceCollection();
-	serviceContainer.addTransientClass(MyService);
-	serviceContainer.addSingletonClass(MySeccondService);
+	const provider = await new ConfigurationBuilder()
+		.add(new MemoryConfigurationSource({ HOST: 'http://127.0.0.1', PORT: '3000' }))
+		.add(new EnvironmentConfigurationSource())
+		.build();
 
-	// resolving
-	const serviceProvider: IServiceProvider = await serviceContainer.build();
-	const myService = await serviceProvider.get<MyService>(MyService);
-	const name = myService.getName();
-	console.log(`The name is ${name}`);
+	const host = provider.getAsString('HOST');
+	const port = provider.getAsString('PORT');
 };
 
 bootstrap()
 	.then()
 	.catch();
-
 ```
 
 # API
 
-Sarina-Di performs `constructor` injection on the constructors of decorated classes.
+## has()
 
-## Decorators
-
-### injectable()
-Class decorator factory that allows the class dependencies to be injected at runtime.
-
-#### Usage
+To check if value exists or not use `has` method:
 ```ts
-import { injectable } from '@sarina/di';
+    const provider = await new ConfigurationBuilder()
+        .add(new MemoryConfigurationSource({ HOST: 'http://127.0.0.1', PORT: '3000' }))
+        .build();
+    const isHostExists = provider.has("HOST");
+    // true
+```
 
-@injectable()
-class MyService {
-	public name: string;
+
+## has()
+
+To check if value exists or not use `has` method:
+```ts
+    const provider = await new ConfigurationBuilder()
+        .add(new MemoryConfigurationSource({ HOST: 'http://127.0.0.1', PORT: '3000' }))
+        .build();
+    const isHostExists = provider.has("HOST");
+    // true
+```
+
+## get(path: string)
+
+To get configuration element use `get` method:
+```ts
+    const provider = await new ConfigurationBuilder()
+        .add(new MemoryConfigurationSource({ HOST: 'http://127.0.0.1', PORT: '3000' }))
+        .build();
+
+    const config = provider.get("HOST");
+    const host = config.value;
+```
+
+## getScoped(path: string)
+
+Library supports nested configuration. The `getScoped` method, will get a `path` and returns an instance of `IConfiguration` which contains all configuration methods scoped to the `path`:
+
+```ts
+    const provider = await new ConfigurationBuilder()
+        .add(new MemoryConfigurationSource([
+            { path:"host:url",value:"http://127.0.0.1" },
+            { path:"host:port",value:"3000" }
+        ]))
+        .build();
+
+    const hostConfig = provider.getScoped("host");
+    const host = hostConfig.get("url").value;
+    const port = hostConfig.get("port").value;
+```
+
+## getAsString(path: string, defaultValue?: string)
+
+In order to get a value of configuration, use `getAsString`:
+
+```ts
+    const provider = await new ConfigurationBuilder()
+        .add(new MemoryConfigurationSource([
+            { path:"host:url",value:"http://127.0.0.1" },
+            { path:"host:port",value:"3000" }
+        ]))
+        .build();
+
+    const url = provider.getAsString("host:url","http://localhost");
+    // url = http://127.0.0.1
+```
+
+# Custom Source
+Sarina-Configuration allows developer to implement custom sources. To create your own source, you need to impement `IConfigurationSource` and implement `load` method
+
+```ts
+
+class MySource implements IConfigurationSource {
+	public async load(): Promise<ConfigurationElement[]> {
+		return [
+			{
+				path: 'host',
+				value: 'http://127.0.0.1',
+			},
+		];
+	}
 }
-
-```
-
-### inject()
-Parameter decorator factory that allows for interface and other non-class information to be stored in the constructor's metadata.
-
-#### Usage
-```ts
-import { inject } from '@sarina/di';
-
-export ILOGGER_TOKEN=symbol('ILogger');
-interface ILogger{}
-
-@injectable()
-class MyService {
-    public constructor(@inject(ILOGGER_TOKEN) logger:ILogger)
-}
-```
-
-### optional()
-Parameter decorator factory that allows null injection if no service found to inject.
-
-#### Usage
-```ts
-import { optional } from '@sarina/di';
-
-export ILOGGER_TOKEN=symbol('ILogger');
-interface ILogger{}
-
-@injectable()
-class MyService {
-    public constructor(@optional() @inject(ILOGGER_TOKEN) logger:ILogger)
-}
-```
-
-### multiple()
-Parameter decorator for array parameters where the array contents will come from the provider. It will inject an array using the specified injection token to resolve the values.
-
-#### Usage
-```ts
-import { multiple } from '@sarina/di';
-
-export ILOGGER_TOKEN=symbol('ILogger');
-interface ILogger{}
-
-@injectable()
-class MyService {
-    public constructor(@multiple() @optional() @inject(ILOGGER_TOKEN) loggers:ILogger[])
-}
-```
-
-## ServiceContainer
-In order for yourservices to be used, they need to be registered with the service-collection. Registrations take the form of a Token/Provider pair, so we need to take a brief diversion to discuss tokens and providers.
-
-### Token
-A token may be either a string, a symbol, or a class constructor.
-
-```ts
-export type Token<T = any> = Type<T> | string | symbol;
-
-const myToken='my-token';
-const myToken2=Symbol('my-Token');
-const myToken=class MyService{}
-```
-
-### Providers
-A provider is registered with the DI collection and provides the information needed to resolve an instance for a given token. In our implementation, we have the following 4 provider types:
-
-#### Class Provider
-```ts
-import { ServiceCollection, ServiceLifeTime } from '@sarina/di';
-
-new ServiceContainer()
-    .addClass(TheClass, ServiceLifeTime.transient)
-    // Or
-    .addTransientClass(TheClass)
-    // Or singletone
-    .addSingletonClass(TheClass)
-    // Or Scoped
-    .addScopedClass(TheClass);
-```
-
-also you can define class provider by passing custom `token`:
-
-```ts
-import { ServiceCollection, ServiceLifeTime, Token } from '@sarina/di';
-
-const myToken:Token = Symbol('MySevice');
-
-new ServiceContainer()
-    .addClass(myToken, TheClass, ServiceLifeTime.transient)
-    // Or
-    .addTransientClass(myToken, TheClass)
-    // Or singletone
-    .addSingletonClass(myToken, TheClass)
-    // Or Scoped
-    .addScopedClass(myToken, TheClass);
-```
-
-#### Value Provider
-This provider is used to resolve a token to a given value. This is useful for registering constants, or things that have a already been instantiated in a particular way.
-
-```ts
-import { ServiceCollection, ServiceLifeTime, Token } from '@sarina/di';
-
-const myToken:Token = Symbol('MySevice');
-
-new ServiceContainer()
-    .addValue(myToken, 'my-value');
-```
-
-#### Factory provider
-This provider is used to resolve a token using a given factory. The factory has full access to the serviceProvider.
-
-```ts
-import { ServiceCollection, ServiceLifeTime, Token } from '@sarina/di';
-
-const myToken:Token = Symbol('MySevice');
-
-class MyService {
-    constructor(name:string){}
-}
-
-new ServiceContainer()
-    .addValue('name', 'ivan');
-    .addFactory(myToken, ServiceLifeTime.transient, async (provider)=> new MyService( await provider.get('name') ) )
-    // Or
-    .addTransientFactory(myToken, async (provider)=> new MyService( await provider.get('name') ) )
-    // Or
-    .addSingletonFactory(myToken, async (provider)=> new MyService( await provider.get('name') ) )
-    // Or
-    .addScopedFactory(myToken, async (provider)=> new MyService( await provider.get('name') ) )
-```
-
-## Resolution
-Resolution is the process of exchanging a token for an instance. ServiceProvider will recursively fulfill the dependencies of the token being resolved in order to return a fully constructed object.
-
-The resolution process is responsible of `IServiceProvider` service. By using `build` method of `IServiceContainer` you will get a ServiceProvider.
-```ts
-import { ServiceCollection, IServiceProvider, ServiceLifeTime, Token } from '@sarina/di';
-const provider:IServiceProvider = new ServiceCollection()
-    ....
+const provider = await new ConfigurationBuilder()
+    .add(new MySource())
     .build();
 ```
 
-The typical way that an object is resolved is from the container using `get()`.
-```ts
-import { ServiceCollection, IServiceProvider, ServiceLifeTime, Token, injectable } from '@sarina/di';
+Sarina provides some built-in sources:
 
-const MYSERVICE_TOKEN=Symbol('MyService');
-
-@injectable()
-class MyService {
-
-}
-
-const serviceProvider : IServiceProvider = new ServiceCollection()
-    .addSingletonClass(MyService)
-    .addSingletonClass(MYSERVICE_TOKEN, (p)=>p.get(MyService)) // using existing instance
-    .addSingletonClass('my-token', (p)=>p.get(MyService)); // using existing instance
-
-const myService = serviceProvider.get('my-token');
-const myService = serviceProvider.get(MYSERVICE_TOKEN);
-const myService = serviceProvider.get(MyService);
-```
-
-You can also resolve all instances registered against a given token with `getAll()`.
-
-```ts
-import { ServiceCollection, IServiceProvider, ServiceLifeTime, Token, injectable } from '@sarina/di';
-
-const VALUES_TOKEN=Symbol('values');
-
-const serviceProvider : IServiceProvider = new ServiceCollection()
-    .addValue(VALUES_TOKEN,'A')
-    .addValue(VALUES_TOKEN,'B')
-    .addValue(VALUES_TOKEN,'C')
-    .build();
-
-const values:string[] = serviceProvider.getAll(VALUES_TOKEN);
-```
-
-## Lifetime
-
-The `sarina-di` allows you to define 3 type of lifetime:
-
-  - **singleton**: Any `singleton` services will be instantied per `IServiceProvider` and will shared across all other providers.
-
-  - **scoped**: Any `scoped` service will be instantied per `ScopedProvider`.
-
-  - **transient**: Any `transient` service will be instantied per `resolution` request.
+- `MemoryConfigurationSource` provides in memory configuration as `array` or `object`.
+- `EnvironmentConfigurationSource` provides elememtns by using `process.env`. 
 
 
-In order to create a scoped provider, you can use `createScope` of `IServiceProvider` instance.
-
-```ts
-const serviceProvider : IServiceProvider = ...
-const scopedProvider = serviceProvider.createScope();
-```
 
 # How to contribute
 Just fork the project, make your changes send us a PR.
