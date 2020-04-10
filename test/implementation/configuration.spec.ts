@@ -1,4 +1,5 @@
 import { Configuration, ScopedConfiguration, RootConfiguration } from '@sarina/configuration';
+import theoretically from 'jest-theories';
 
 describe('sarina/configuration', () => {
 	describe('configuration-builder', () => {
@@ -118,105 +119,187 @@ describe('sarina/configuration', () => {
 					expect(result.elements[1]).toBe(config.elements[2]);
 				});
 			});
-			describe('ScopedConfiguration', () => {
-				it('should_not_include_current_value_element', () => {
+			describe('getAs<T>()', () => {
+				it('should_return_undefined_if_element_not_found_and_no_default_value_provided', () => {
 					// Arrange
-					const config = new Configuration([
+					const configuration = new Configuration([]);
+
+					// Act
+					const value = configuration.getAs<string>('host', (v) => null);
+
+					// Expect
+					expect(value).toBeUndefined();
+				});
+				it('should_return_defaultValue_if_element_not_found', () => {
+					// Arrange
+					const configuration = new Configuration([]);
+
+					// Act
+					const value = configuration.getAs<string>('host', (v) => null, 'test');
+
+					// Expect
+					expect(value).toBe('test');
+				});
+				it('should_use_convertor_if_element_found', () => {
+					// Arrange
+					expect.assertions(2);
+					const configuration = new Configuration([
 						{
 							path: 'host',
-							value: 'true',
-						},
-						{
-							path: 'host:url',
 							value: 'http://127.0.0.1',
-						},
-						{
-							path: 'host:port',
-							value: '3000',
 						},
 					]);
 
 					// Act
-					const result = config.getScoped('host') as ScopedConfiguration;
-
-					// Assert
-					expect(result.elements).toHaveLength(2);
-					expect(result.elements[0]).toBe(config.elements[1]);
-					expect(result.elements[1]).toBe(config.elements[2]);
-				});
-				it('valueElement_should_has_value_of_scope_value_if_element_found', () => {
-					// Arrange
-					const config = new Configuration([
-						{
-							path: 'host',
-							value: 'true',
+					const value = configuration.getAs<string>(
+						'host',
+						(v) => {
+							expect(v).toBe('http://127.0.0.1');
+							return v;
 						},
-						{
-							path: 'host:url',
-							value: 'http://127.0.0.1',
-						},
-						{
-							path: 'host:port',
-							value: '3000',
-						},
-					]);
+						'test',
+					);
 
-					// Act
-					const result = config.getScoped('host') as ScopedConfiguration;
-
-					// Assert
-					expect(result.elements).toHaveLength(2);
-					expect(result.valueElement).toBe(config.elements[0]);
-				});
-				it('valueElement_should_beNull_if_element_not_found', () => {
-					// Arrange
-					const config = new Configuration([
-						{
-							path: 'host:url',
-							value: 'http://127.0.0.1',
-						},
-						{
-							path: 'host:port',
-							value: '3000',
-						},
-					]);
-
-					// Act
-					const result = config.getScoped('host') as ScopedConfiguration;
-
-					// Assert
-					expect(result.elements).toHaveLength(2);
-					expect(result.valueElement).toBeNull();
-				});
-				describe('getFullPath', () => {
-					it('should_combine_scope_with_path', () => {
-						// Arrange
-						const scoped = new ScopedConfiguration([], 'host');
-
-						// Act
-						const path = scoped.getFullPath('url');
-
-						// Assert
-						expect(path).toBe(`host:url`);
-					});
+					// Expect
+					expect(value).toBe('http://127.0.0.1');
 				});
 			});
-			describe('RootConfiguration', () => {
-				it('should_pass_elements', () => {
+			describe('getAsString', () => {
+				it('should_return_value_if_element_found', () => {
 					// Arrange
-					const elements = [
+					const configuration = new Configuration([
 						{
 							path: 'host',
 							value: 'http://127.0.0.1',
 						},
-					];
+					]);
 
 					// Act
-					const config = new RootConfiguration(elements);
+					const value = configuration.getAsString('host');
+
+					// Expect
+					expect(value).toBe('http://127.0.0.1');
+				});
+				it('should_return_defaultValue_if_element_not_found', () => {
+					// Arrange
+					const configuration = new Configuration([]);
+
+					// Act
+					const value = configuration.getAsString('host', 'http://localhost');
+
+					// Expect
+					expect(value).toBe('http://localhost');
+				});
+				it('should_return_undefined_if_element_notFound_and_default_notProvided', () => {
+					// Arrange
+					const configuration = new Configuration([]);
+
+					// Act
+					const value = configuration.getAsString('host');
+
+					// Expect
+					expect(value).toBeUndefined();
+				});
+			});
+		});
+		describe('ScopedConfiguration', () => {
+			it('should_not_include_current_value_element', () => {
+				// Arrange
+				const config = new Configuration([
+					{
+						path: 'host',
+						value: 'true',
+					},
+					{
+						path: 'host:url',
+						value: 'http://127.0.0.1',
+					},
+					{
+						path: 'host:port',
+						value: '3000',
+					},
+				]);
+
+				// Act
+				const result = config.getScoped('host') as ScopedConfiguration;
+
+				// Assert
+				expect(result.elements).toHaveLength(2);
+				expect(result.elements[0]).toBe(config.elements[1]);
+				expect(result.elements[1]).toBe(config.elements[2]);
+			});
+			it('valueElement_should_has_value_of_scope_value_if_element_found', () => {
+				// Arrange
+				const config = new Configuration([
+					{
+						path: 'host',
+						value: 'true',
+					},
+					{
+						path: 'host:url',
+						value: 'http://127.0.0.1',
+					},
+					{
+						path: 'host:port',
+						value: '3000',
+					},
+				]);
+
+				// Act
+				const result = config.getScoped('host') as ScopedConfiguration;
+
+				// Assert
+				expect(result.elements).toHaveLength(2);
+				expect(result.valueElement).toBe(config.elements[0]);
+			});
+			it('valueElement_should_beNull_if_element_not_found', () => {
+				// Arrange
+				const config = new Configuration([
+					{
+						path: 'host:url',
+						value: 'http://127.0.0.1',
+					},
+					{
+						path: 'host:port',
+						value: '3000',
+					},
+				]);
+
+				// Act
+				const result = config.getScoped('host') as ScopedConfiguration;
+
+				// Assert
+				expect(result.elements).toHaveLength(2);
+				expect(result.valueElement).toBeNull();
+			});
+			describe('getFullPath', () => {
+				it('should_combine_scope_with_path', () => {
+					// Arrange
+					const scoped = new ScopedConfiguration([], 'host');
+
+					// Act
+					const path = scoped.getFullPath('url');
 
 					// Assert
-					expect(config.elements).toMatchObject(elements);
+					expect(path).toBe(`host:url`);
 				});
+			});
+		});
+		describe('RootConfiguration', () => {
+			it('should_pass_elements', () => {
+				// Arrange
+				const elements = [
+					{
+						path: 'host',
+						value: 'http://127.0.0.1',
+					},
+				];
+
+				// Act
+				const config = new RootConfiguration(elements);
+
+				// Assert
+				expect(config.elements).toMatchObject(elements);
 			});
 		});
 	});
