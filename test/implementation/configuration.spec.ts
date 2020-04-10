@@ -45,7 +45,7 @@ describe('sarina/configuration', () => {
 				});
 			});
 			describe('get()', () => {
-				it('should_return_null_if_element_not_found', () => {
+				it('should_return_undefined_if_element_not_found', () => {
 					// Arrange
 					const config = new Configuration([]);
 
@@ -53,14 +53,13 @@ describe('sarina/configuration', () => {
 					const result = config.get('host');
 
 					// Assert
-					expect(result).toBeNull();
+					expect(result).toBeUndefined();
 				});
-				it('should_return_null_if_element_found_with_null_value', () => {
-					// Arrange
+				it('should_return_element_if_found', () => {
 					const config = new Configuration([
 						{
 							path: 'host',
-							value: null,
+							value: 'http://127.0.0.1',
 						},
 					]);
 
@@ -68,17 +67,8 @@ describe('sarina/configuration', () => {
 					const result = config.get('host');
 
 					// Assert
-					expect(result).toBeNull();
-				});
-				it('should_return_defaultValue_if_config_not_found', () => {
-					// Arrange
-					const config = new Configuration([]);
-
-					// Act
-					const result = config.get('host', 'http://127.0.0.1');
-
-					// Assert
-					expect(result).toBe('http://127.0.0.1');
+					expect(result.path).toBe('host');
+					expect(result.value).toBe('http://127.0.0.1');
 				});
 			});
 			describe('getScoped()', () => {

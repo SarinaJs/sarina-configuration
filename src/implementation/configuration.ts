@@ -13,10 +13,9 @@ export class Configuration implements IConfiguration {
 		return this.elements.findIndex((s) => s.path == fullPath) >= 0;
 	}
 
-	public get(path: string, defaultValue?: string) {
+	public get(path: string): ConfigurationElement {
 		const fullPath = this.getFullPath(path);
-		const element = this.elements.find((s) => s.path == fullPath);
-		return element?.value || defaultValue || null;
+		return this.elements.find((s) => s.path == fullPath);
 	}
 	public getScoped(scope: string): IConfiguration {
 		const fullPath = this.getFullPath(scope);
